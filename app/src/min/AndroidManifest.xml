@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.yourcompany.yourapp">
+
+    <!-- دسترسی‌های ضروری -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- دسترسی پرداخت مایکت (به صورت داینامیک توسط Gradle پر می‌شود) -->
+    <uses-permission android:name="${marketPermission}" />
+
+    <!-- برای Android 6.0+ نیاز به درخواست runtime permission نیست -->
+    <uses-permission android:name="com.android.vending.BILLING" tools:node="remove" />
+
+    <application
+        android:name=".MyApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="31"
+        tools:ignore="UnusedAttribute">
+
+        <!-- Activity اصلی -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            
+            <!-- قابلیت deep linking برای بازگشت از مایکت -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="yourapp" />
+            </intent-filter>
+        </activity>
+
+        <!-- Activity برای مدیریت پرداخت -->
+        <activity
+            android:name=".ui.PaymentActivity"
+            android:exported="false"
+            android:label="@string/title_payment"
+            android:screenOrientation="portrait"
+            android:parentActivityName=".ui.MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".ui.MainActivity" />
+        </activity>
+
+        <!-- سرویس پرداخت مایکت -->
+        <service
+            android:name="com.myket.billing.IabService"
+            android:exported="true"
+            android:permission="${marketPermission}">
+            <intent-filter>
+                <action android:name="${marketBindAddress}" />
+            </intent-filter>
+            <meta-data
+                android:name="marketApplicationId"
+                android:value="${marketApplicationId}" />
+        </service>
+
+        <!-- سرویس برای پردازش‌های پس‌زمینه -->
+        <service
+            android:name=".service.PurchaseVerificationService"
+            android:enabled="true"
+            android:exported="false" />
+
+        <!-- Broadcast Receiver برای نظارت بر تغییرات شبکه -->
+        <receiver
+            android:name=".receiver.NetworkChangeReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- WorkManager برای پردازش خریدها در پس‌زمینه -->
+        <service
+            android:name="androidx.work.impl.background.systemalarm.SystemAlarmService"
+            android:enabled="true"
+            android:exported="false" />
+
+        <!-- متادیتا برای پشتیبانی از چندین استور -->
+        <meta-data
+            android:name="billing_supported_stores"
+            android:value="myket,bazaar" />
+
+        <!-- پشتیبانی از RTL -->
+        <meta-data
+            android:name="android.supportsRtl"
+            android:value="true" />
+
+    </application>
+
+</manifest>

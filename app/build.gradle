@@ -1,0 +1,34 @@
+android {
+    compileSdk 34
+    defaultConfig {
+        applicationId "com.example.myketiap"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+        
+        def marketApplicationId = "ir.mservices.market"
+        def marketBindAddress = "ir.mservices.market.InAppBillingService.BIND"
+        manifestPlaceholders = [
+            marketApplicationId: "${marketApplicationId}",
+            marketBindAddress: "${marketBindAddress}",
+            marketPermission: "${marketApplicationId}.BILLING"
+        ]
+        buildConfigField "String", "IAB_PUBLIC_KEY", "\"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC7D4pG8Nt/XytP1F9JJMynMRPWuvHqcJLMr8mtBc3IhULaGbQxp5wD+iv6NmTACzk/2+E5XE1NN1bRUZPdzh42rTVGJ2Xq7cM20b9EDmzqjv72GoF+3IThVszO11IpFlx+TdKRfX9ztv58dgodKNOoKt1JhiPX46MIaOQFFK9cSwIDAQAB\""
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.github.myketstore:myket-billing-client:1.6'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+}

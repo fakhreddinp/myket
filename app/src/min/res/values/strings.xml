@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Myket IAP Sample</string>
+    <string name="title_payment">پرداخت</string>
+    <string name="premium_status_active">پریمیوم فعال ✓</string>
+    <string name="premium_status_inactive">نسخه معمولی</string>
+    <string name="button_buy_premium">ارتقا به پریمیوم</string>
+    <string name="button_purchased">خرید شده</string>
+    <string name="error_network">خطا در اتصال به اینترنت</string>
+    <string name="error_billing">خطا در سرویس پرداخت</string>
+    <string name="success_purchase">خرید با موفقیت انجام شد!</string>
+    <string name="connecting">در حال اتصال به مایکت…</string>
+</resources>
