@@ -1,0 +1,179 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.0'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22'
+        
+        // برای کدهای obfuscation و بهینه‌سازی
+        classpath 'com.guardsquare:proguard-gradle:7.3.2'
+        
+        // برای انتشار خودکار در GitHub (اختیاری)
+        classpath 'com.github.triplet.gradle:play-publisher:3.8.0'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        
+        // ریپازیتوری مایکت و سایر استورها
+        maven { url 'https://jitpack.io' }
+        maven { url 'https://dl.bintray.com/myket/maven' }
+        
+        // برای کافه‌بازار (اگر نیاز دارید)
+        maven { url 'https://repo.cafebazaar.ir/artifactory/bazaar-gradle-release' }
+    }
+}
+
+// تنظیمات全局 برای تمام ماژول‌ها
+ext {
+    // نسخه‌های SDK
+    compileSdkVersion = 34
+    minSdkVersion = 21
+    targetSdkVersion = 34
+    
+    // نسخه‌های کتابخانه‌ها
+    appCompatVersion = '1.6.1'
+    materialVersion = '1.9.0'
+    constraintLayoutVersion = '2.1.4'
+    retrofitVersion = '2.9.0'
+    okhttpVersion = '4.11.0'
+    gsonVersion = '2.10.1'
+    roomVersion = '2.5.2'
+    lifecycleVersion = '2.6.2'
+    
+    // نسخه کد و نام
+    versionCode = 1
+    versionName = "1.0.0"
+    
+    // تنظیمات مایکت
+    myketApplicationId = "ir.mservices.market"
+    myketBindAddress = "ir.mservices.market.InAppBillingService.BIND"
+    myketPermission = "ir.mservices.market.BILLING"
+}
+
+// پیکربندی全局 برای تمام پروژه‌ها
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            android {
+                compileSdkVersion rootProject.ext.compileSdkVersion
+                
+                defaultConfig {
+                    minSdkVersion rootProject.ext.minSdkVersion
+                    targetSdkVersion rootProject.ext.targetSdkVersion
+                    versionCode rootProject.ext.versionCode
+                    versionName rootProject.ext.versionName
+                    
+                    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+                    
+                    // پیکربندی buildConfig برای تمام ماژول‌ها
+                    buildConfigField("String", "APP_VERSION_NAME", "\"${rootProject.ext.versionName}\"")
+                    buildConfigField("int", "APP_VERSION_CODE", "${rootProject.ext.versionCode}")
+                }
+                
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_1_8
+                    targetCompatibility JavaVersion.VERSION_1_8
+                }
+                
+                buildTypes {
+                    debug {
+                        debuggable true
+                        minifyEnabled false
+                        shrinkResources false
+                        proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+                    }
+                    release {
+                        debuggable false
+                        minifyEnabled true
+                        shrinkResources true
+                        proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                    }
+                }
+                
+                // پشتیبانی از viewBinding و dataBinding
+                buildFeatures {
+                    viewBinding true
+                    dataBinding false
+                }
+                
+                // پیکربندی lint (اختیاری)
+                lintOptions {
+                    abortOnError false
+                    checkReleaseBuilds false
+                }
+                
+                // پشتیبانی از زبان فارسی و RTL
+                resourceConfigurations += ["en", "fa", "ar"]
+            }
+        }
+    }
+}
+
+// تسک پاکسازی پروژه
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+// تسک برای نمایش وابستگی‌های پروژه
+task listDependencies {
+    doLast {
+        project.allprojects { project ->
+            println "Project: ${project.name}"
+            project.configurations.each { configuration ->
+                if (configuration.isCanBeResolved) {
+                    try {
+                        configuration.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+                            println "  ${artifact.moduleVersion.id}"
+                        }
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                }
+            }
+        }
+    }
+}
+
+// تسک برای بررسی وضعیت ساخت
+task buildStatus {
+    doLast {
+        println "✅ ساخت پروژه با مشخصات زیر انجام شد:"
+        println "   - compileSdk: ${rootProject.ext.compileSdkVersion}"
+        println "   - minSdk: ${rootProject.ext.minSdkVersion}"
+        println "   - targetSdk: ${rootProject.ext.targetSdkVersion}"
+        println "   - version: ${rootProject.ext.versionName} (${rootProject.ext.versionCode})"
+        println "   - repositories: Google, MavenCentral, JitPack"
+    }
+}
+
+// تنظیمات پیش‌فرض برای تمام تسک‌های ساخت
+gradle.taskGraph.whenReady { taskGraph ->
+    if (taskGraph.hasTask(':app:assembleRelease')) {
+        println "🚀 ساخت نسخه Release شروع شد..."
+        // می‌توانید عملیات اضافی برای ساخت Release اینجا اضافه کنید
+    }
+    
+    if (taskGraph.hasTask(':app:assembleDebug')) {
+        println "🔧 ساخت نسخه Debug شروع شد..."
+    }
+}
+
+// پیکربندی پیش‌فرض برای تست‌ها
+tasks.withType(Test) {
+    testLogging {
+        events "passed", "skipped", "failed", "standardOut", "standardError"
+        showExceptions true
+        exceptionFormat "full"
+        showCauses true
+        showStackTraces true
+    }
+}
