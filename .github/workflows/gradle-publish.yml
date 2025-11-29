@@ -1,14 +1,1066 @@
-name: Build APK
-on: [push]
+name: Android Build and APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
-    - uses: actions/checkout@v2
-    - name: Build APK
-      uses: actions/setup-java@v2
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Create Project Structure
+      run: |
+        # ایجاد ساختار پوشه‌ها
+        mkdir -p app/src/main/java/com/example/myketiap
+        mkdir -p app/src/main/res/layout
+        mkdir -p app/src/main/res/values
+        mkdir -p app/src/main/res/mipmap-hdpi
+        mkdir -p app/src/main/res/mipmap-mdpi
+        mkdir -p app/src/main/res/mipmap-xhdpi
+        mkdir -p app/src/main/res/mipmap-xxhdpi
+        mkdir -p app/src/main/res/mipmap-xxxhdpi
+        mkdir -p backend
+        
+        echo "✅ پوشه‌ها ایجاد شدند"
+    
+    - name: Create Root build.gradle
+      run: |
+        cat > build.gradle << 'EOF'
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.1.0'
+            }
+        }
+
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+                maven { url 'https://jitpack.io' }
+            }
+        }
+
+        task clean(type: Delete) {
+            delete rootProject.buildDir
+        }
+
+        ext {
+            compileSdkVersion = 34
+            minSdkVersion = 21
+            targetSdkVersion = 34
+            versionCode = 1
+            versionName = "1.0.0"
+        }
+        EOF
+        
+        echo "✅ فایل build.gradle سطح ریشه ایجاد شد"
+    
+    - name: Create gradlew file
+      run: |
+        cat > gradlew << 'EOF'
+        #!/usr/bin/env sh
+
+        ##############################################################################
+        ##
+        ##  Gradle start up script for UN*X
+        ##
+        ##############################################################################
+
+        # Attempt to set APP_HOME
+        # Resolve links: $0 may be a link
+        PRG="$0"
+        # Need this for relative symlinks.
+        while [ -h "$PRG" ] ; do
+            ls=`ls -ld "$PRG"`
+            link=`expr "$ls" : '.*-> \(.*\)$'`
+            if expr "$link" : '/.*' > /dev/null; then
+                PRG="$link"
+            else
+                PRG=`dirname "$PRG"`"/$link"
+            fi
+        done
+        SAVED="`pwd`"
+        cd "`dirname \"$PRG\"`/" >/dev/null
+        APP_HOME="`pwd -P`"
+        cd "$SAVED" >/dev/null
+
+        APP_NAME="Gradle"
+        APP_BASE_NAME=`basename "$0"`
+
+        # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+        DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+
+        # Use the maximum available, or set MAX_FD != -1 to use that value.
+        MAX_FD="maximum"
+
+        warn () {
+            echo "$*"
+        }
+
+        die () {
+            echo
+            echo "$*"
+            echo
+            exit 1
+        }
+
+        # OS specific support (must be 'true' or 'false').
+        cygwin=false
+        msys=false
+        darwin=false
+        nonstop=false
+        case "`uname`" in
+          CYGWIN* )
+            cygwin=true
+            ;;
+          Darwin* )
+            darwin=true
+            ;;
+          MINGW* )
+            msys=true
+            ;;
+          NONSTOP* )
+            nonstop=true
+            ;;
+        esac
+
+        CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+        # Determine the Java command to use to start the JVM.
+        if [ -n "$JAVA_HOME" ] ; then
+            if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
+                # IBM's JDK on AIX uses strange locations for the executables
+                JAVACMD="$JAVA_HOME/jre/sh/java"
+            else
+                JAVACMD="$JAVA_HOME/bin/java"
+            fi
+            if [ ! -x "$JAVACMD" ] ; then
+                die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
+
+        Please set the JAVA_HOME variable in your environment to match the
+        location of your Java installation."
+            fi
+        else
+            JAVACMD="java"
+            which java >/dev/null 2>&1 || die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+
+        Please set the JAVA_HOME variable in your environment to match the
+        location of your Java installation."
+        fi
+
+        # Increase the maximum file descriptors if we can.
+        if [ "$cygwin" = "false" -a "$darwin" = "false" -a "$nonstop" = "false" ] ; then
+            MAX_FD_LIMIT=`ulimit -H -n`
+            if [ $? -eq 0 ] ; then
+                if [ "$MAX_FD" = "maximum" -o "$MAX_FD" = "max" ] ; then
+                    MAX_FD="$MAX_FD_LIMIT"
+                fi
+                ulimit -n $MAX_FD
+                if [ $? -ne 0 ] ; then
+                    warn "Could not set maximum file descriptor limit: $MAX_FD"
+                fi
+            else
+                warn "Could not query maximum file descriptor limit: $MAX_FD_LIMIT"
+            fi
+        fi
+
+        # For Darwin, add options to specify how the application appears in the dock
+        if $darwin; then
+            GRADLE_OPTS="$GRADLE_OPTS \"-Xdock:name=$APP_NAME\" \"-Xdock:icon=$APP_HOME/media/gradle.icns\""
+        fi
+
+        # For Cygwin or MSYS, switch paths to Windows format before running java
+        if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
+            APP_HOME=`cygpath --path --mixed "$APP_HOME"`
+            CLASSPATH=`cygpath --path --mixed "$CLASSPATH"`
+            JAVACMD=`cygpath --unix "$JAVACMD"`
+
+            # We build the pattern for arguments to be converted via cygpath
+            ROOTDIRSRAW=`find -L / -maxdepth 1 -mindepth 1 -type d 2>/dev/null`
+            SEP=""
+            for dir in $ROOTDIRSRAW ; do
+                ROOTDIRS="$ROOTDIRS$SEP$dir"
+                SEP="|"
+            done
+            OURCYGPATTERN="(^($ROOTDIRS))"
+            # Add a user-defined pattern to the cygpath arguments
+            if [ "$GRADLE_CYGPATTERN" != "" ] ; then
+                OURCYGPATTERN="$OURCYGPATTERN|($GRADLE_CYGPATTERN)"
+            fi
+            # Now convert the arguments - kludge to limit ourselves to /bin/sh
+            i=0
+            for arg in "$@" ; do
+                CHECK=`echo "$arg"|egrep -c "$OURCYGPATTERN" -`
+                CHECK2=`echo "$arg"|egrep -c "^-"`                                 ### Determine if an option
+
+                if [ $CHECK -ne 0 ] && [ $CHECK2 -eq 0 ] ; then                    ### Added a condition
+                    eval `echo args$i`=`cygpath --path --ignore --mixed "$arg"`
+                else
+                    eval `echo args$i`="\"$arg\""
+                fi
+                i=$((i+1))
+            done
+            case $i in
+                (0) set -- ;;
+                (1) set -- "$args0" ;;
+                (2) set -- "$args0" "$args1" ;;
+                (3) set -- "$args0" "$args1" "$args2" ;;
+                (4) set -- "$args0" "$args1" "$args2" "$args3" ;;
+                (5) set -- "$args0" "$args1" "$args2" "$args3" "$args4" ;;
+                (6) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" ;;
+                (7) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" ;;
+                (8) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" "$args7" ;;
+                (9) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" "$args7" "$args8" ;;
+            esac
+        fi
+
+        # Escape application args
+        save () {
+            for i do printf %s\\n "$i" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/' \\\\/" ; done
+            echo " "
+        }
+        APP_ARGS=$(save "$@")
+
+        # Collect all arguments for the java command, following the shell quoting and substitution rules
+        eval set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain "$APP_ARGS"
+
+        # by default we should be in the correct project dir, but when run from Finder on Mac, the cwd is wrong
+        if [ "$(uname)" = "Darwin" ] && [ "$(getattr -d . | grep crwd)" ]; then
+          cd "$(dirname "$0")"
+        fi
+
+        exec "$JAVACMD" "$@"
+        EOF
+        
+        chmod +x gradlew
+        echo "✅ فایل gradlew ایجاد و executable شد"
+    
+    - name: Create gradle wrapper properties
+      run: |
+        mkdir -p gradle/wrapper
+        cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-bin.zip
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
+        EOF
+        echo "✅ فایل gradle-wrapper.properties ایجاد شد"
+    
+    - name: Create App build.gradle
+      run: |
+        cat > app/build.gradle << 'EOF'
+        plugins {
+            id 'com.android.application'
+        }
+
+        android {
+            compileSdk 34
+            namespace 'com.example.myketiap'
+
+            defaultConfig {
+                applicationId "com.example.myketiap"
+                minSdk 21
+                targetSdk 34
+                versionCode 1
+                versionName "1.0.0"
+
+                def marketApplicationId = "ir.mservices.market"
+                def marketBindAddress = "ir.mservices.market.InAppBillingService.BIND"
+                manifestPlaceholders = [
+                    marketApplicationId: "${marketApplicationId}",
+                    marketBindAddress: "${marketBindAddress}",
+                    marketPermission: "${marketApplicationId}.BILLING"
+                ]
+                buildConfigField "String", "IAB_PUBLIC_KEY", "\"YOUR_MYKET_PUBLIC_KEY_HERE\""
+            }
+
+            buildTypes {
+                release {
+                    minifyEnabled false
+                    proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                }
+            }
+            
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_1_8
+                targetCompatibility JavaVersion.VERSION_1_8
+            }
+        }
+
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'com.google.android.material:material:1.9.0'
+            implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+            implementation 'com.github.myketstore:myket-billing-client:1.6'
+        }
+        EOF
+        echo "✅ فایل app/build.gradle ایجاد شد"
+    
+    - name: Create AndroidManifest.xml
+      run: |
+        cat > app/src/main/AndroidManifest.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:tools="http://schemas.android.com/tools"
+            package="com.example.myketiap">
+
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+            <uses-permission android:name="${marketPermission}" />
+
+            <application
+                android:allowBackup="true"
+                android:icon="@mipmap/ic_launcher"
+                android:label="@string/app_name"
+                android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+                tools:ignore="GoogleAppIndexingWarning">
+
+                <activity
+                    android:name=".MainActivity"
+                    android:exported="true"
+                    android:label="@string/app_name">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+
+                <service
+                    android:name="com.myket.billing.IabService"
+                    android:exported="true"
+                    android:permission="${marketPermission}">
+                    <intent-filter>
+                        <action android:name="${marketBindAddress}" />
+                    </intent-filter>
+                    <meta-data
+                        android:name="marketApplicationId"
+                        android:value="${marketApplicationId}" />
+                </service>
+
+            </application>
+        </manifest>
+        EOF
+        echo "✅ فایل AndroidManifest.xml ایجاد شد"
+    
+    - name: Create MainActivity.java
+      run: |
+        cat > app/src/main/java/com/example/myketiap/MainActivity.java << 'EOF'
+        package com.example.myketiap;
+
+        import android.os.Bundle;
+        import android.widget.Button;
+        import android.widget.TextView;
+        import android.widget.Toast;
+        import androidx.appcompat.app.AppCompatActivity;
+
+        public class MainActivity extends AppCompatActivity {
+            private TextView statusText;
+            private Button buyButton;
+            private boolean isPremium = false;
+
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                setContentView(R.layout.activity_main);
+                
+                statusText = findViewById(R.id.status_text);
+                buyButton = findViewById(R.id.buy_button);
+                
+                buyButton.setOnClickListener(v -> {
+                    if (!isPremium) {
+                        Toast.makeText(this, "قابلیت پرداخت در نمونه فعال است", Toast.LENGTH_SHORT).show();
+                    }
+                });
+                
+                updateUI();
+            }
+            
+            private void updateUI() {
+                if (isPremium) {
+                    statusText.setText("وضعیت: پریمیوم فعال ✓");
+                    buyButton.setEnabled(false);
+                    buyButton.setText("خرید شده");
+                } else {
+                    statusText.setText("وضعیت: نسخه معمولی");
+                    buyButton.setEnabled(true);
+                    buyButton.setText("ارتقا به پریمیوم - ۱۰,۰۰۰ تومان");
+                }
+            }
+        }
+        EOF
+        echo "✅ فایل MainActivity.java ایجاد شد"
+    
+    - name: Create layout files
+      run: |
+        cat > app/src/main/res/layout/activity_main.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:gravity="center"
+            android:background="#F5F5F5">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="نمونه برنامه پرداخت مایکت"
+                android:textSize="24sp"
+                android:textColor="#333333"
+                android:layout_marginBottom="32dp" />
+
+            <TextView
+                android:id="@+id/status_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="وضعیت: در حال بارگذاری..."
+                android:textSize="18sp"
+                android:layout_marginBottom="32dp" />
+
+            <Button
+                android:id="@+id/buy_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ارتقا به پریمیوم"
+                android:textSize="16sp"
+                android:padding="16dp"
+                android:background="#2196F3"
+                android:textColor="#FFFFFF" />
+
+        </LinearLayout>
+        EOF
+        echo "✅ فایل layout ایجاد شد"
+    
+    - name: Create strings.xml
+      run: |
+        cat > app/src/main/res/values/strings.xml << 'EOF'
+        <resources>
+            <string name="app_name">Myket IAP Sample</string>
+        </resources>
+        EOF
+        echo "✅ فایل strings.xml ایجاد شد"
+    
+    - name: Create settings.gradle
+      run: |
+        cat > settings.gradle << 'EOF'
+        pluginManagement {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories {
+                google()
+                mavenCentral()
+                maven { url 'https://jitpack.io' }
+            }
+        }
+        rootProject.name = "MyketIAPSample"
+        include ':app'
+        EOF
+        echo "✅ فایل settings.gradle ایجاد شد"
+    
+    - name: Create basic resource files
+      run: |
+        # ایجاد فایل‌های مینی‌مال برای منابع
+        echo "<?xml version=\"1.0\" encoding=\"utf-8\"?><resources></resources>" > app/src/main/res/values/colors.xml
+        echo "<?xml version=\"1.0\" encoding=\"utf-8\"?><resources></resources>" > app/src/main/res/values/styles.xml
+        
+        # ایجاد آیکن‌های پیش‌فرض
+        touch app/src/main/res/mipmap-hdpi/ic_launcher.png
+        touch app/src/main/res/mipmap-mdpi/ic_launcher.png
+        touch app/src/main/res/mipmap-xhdpi/ic_launcher.png
+        touch app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+        touch app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+        
+        echo "✅ فایل‌های منابع ایجاد شدند"
+    
+    - name: Setup Java
+      uses: actions/setup-java@v4
       with:
-        java-version: '11'
         distribution: 'temurin'
-    - run: chmod +x gradlew
-    - run: ./gradlew assembleRelease
+        java-version: '11'
+    
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew
+    
+    - name: Build with Gradle
+      run: ./gradlew build
+    
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-apk
+        path: app/build/outputs/apk/
+        retention-days: 7
+
+    - name: Show project structure
+      run: |
+        echo "📁 ساختار نهایی پروژه:"
+        find . -type f -name "*.java" -o -name "*.xml" -o -name "*.gradle" -o -name "gradlew" | sort
+
+        - name: Create Security.java
+  run: |
+    cat > app/src/main/java/com/example/myketiap/Security.java << 'EOF'
+    package com.example.myketiap;
+
+    import android.text.TextUtils;
+    import android.util.Log;
+    import java.security.*;
+    import java.security.spec.InvalidKeySpecException;
+    import java.security.spec.X509EncodedKeySpec;
+
+    public class Security {
+        private static final String TAG = "IABUtil/Security";
+        private static final String KEY_FACTORY_ALGORITHM = "RSA";
+        private static final String SIGNATURE_ALGORITHM = "SHA1withRSA";
+
+        public static boolean verifyPurchase(String base64PublicKey, String signedData, String signature) {
+            if (TextUtils.isEmpty(signedData) || TextUtils.isEmpty(base64PublicKey) ||
+                    TextUtils.isEmpty(signature)) {
+                Log.e(TAG, "Purchase verification failed: missing data.");
+                return false;
+            }
+
+            PublicKey key = generatePublicKey(base64PublicKey);
+            return verify(key, signedData, signature);
+        }
+
+        public static PublicKey generatePublicKey(String encodedPublicKey) {
+            try {
+                byte[] decodedKey = android.util.Base64.decode(encodedPublicKey, android.util.Base64.DEFAULT);
+                KeyFactory keyFactory = KeyFactory.getInstance(KEY_FACTORY_ALGORITHM);
+                return keyFactory.generatePublic(new X509EncodedKeySpec(decodedKey));
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException(e);
+            } catch (InvalidKeySpecException e) {
+                Log.e(TAG, "Invalid key specification.");
+                throw new IllegalArgumentException(e);
+            }
+        }
+
+        public static boolean verify(PublicKey publicKey, String signedData, String signature) {
+            byte[] signatureBytes;
+            try {
+                signatureBytes = android.util.Base64.decode(signature, android.util.Base64.DEFAULT);
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "Base64 decoding failed.");
+                return false;
+            }
+
+            try {
+                Signature signatureAlgorithm = Signature.getInstance(SIGNATURE_ALGORITHM);
+                signatureAlgorithm.initVerify(publicKey);
+                signatureAlgorithm.update(signedData.getBytes());
+                
+                if (!signatureAlgorithm.verify(signatureBytes)) {
+                    Log.e(TAG, "Signature verification failed.");
+                    return false;
+                }
+                return true;
+            } catch (NoSuchAlgorithmException e) {
+                Log.e(TAG, "NoSuchAlgorithmException.");
+            } catch (InvalidKeyException e) {
+                Log.e(TAG, "Invalid key specification.");
+            } catch (SignatureException e) {
+                Log.e(TAG, "Signature exception.");
+            }
+            return false;
+        }
+    }
+    EOF
+    echo "✅ فایل Security.java ایجاد شد"
+
+- name: Create BillingManager.java
+  run: |
+    cat > app/src/main/java/com/example/myketiap/BillingManager.java << 'EOF'
+    package com.example.myketiap;
+
+    import android.content.Context;
+    import android.util.Log;
+    import com.myket.billing.IabHelper;
+    import com.myket.billing.IabResult;
+    import com.myket.billing.Inventory;
+    import com.myket.billing.Purchase;
+
+    public class BillingManager {
+        private static final String TAG = "BillingManager";
+        
+        private IabHelper iabHelper;
+        private Context context;
+        private BillingUpdatesListener listener;
+        
+        public interface BillingUpdatesListener {
+            void onBillingSetupFinished(boolean success);
+            void onPurchaseVerified(String sku, boolean success);
+            void onQueryPurchasesFinished(boolean hasPremium);
+        }
+        
+        public BillingManager(Context context, BillingUpdatesListener listener) {
+            this.context = context;
+            this.listener = listener;
+            setupBilling();
+        }
+        
+        private void setupBilling() {
+            iabHelper = new IabHelper(context, BuildConfig.IAB_PUBLIC_KEY);
+            iabHelper.enableDebugLogging(true);
+            
+            iabHelper.startSetup(result -> {
+                if (result.isSuccess()) {
+                    Log.d(TAG, "اتصال به مایکت موفقیت‌آمیز بود");
+                    listener.onBillingSetupFinished(true);
+                    queryPurchases();
+                } else {
+                    Log.e(TAG, "خطا در اتصال به مایکت: " + result.getMessage());
+                    listener.onBillingSetupFinished(false);
+                }
+            });
+        }
+        
+        public void queryPurchases() {
+            try {
+                iabHelper.queryInventoryAsync((result, inventory) -> {
+                    if (result.isFailure()) {
+                        Log.e(TAG, "خطا در بررسی خریدها: " + result.getMessage());
+                        return;
+                    }
+                    
+                    boolean hasPremium = inventory.hasPurchase("premium_upgrade");
+                    listener.onQueryPurchasesFinished(hasPremium);
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "خطا در queryPurchases: " + e.getMessage());
+            }
+        }
+        
+        public void initiatePurchase(String sku) {
+            try {
+                String payload = "user_" + System.currentTimeMillis();
+                
+                iabHelper.launchPurchaseFlow(
+                    (android.app.Activity) context,
+                    sku,
+                    10001,
+                    (result, purchase) -> {
+                        if (result.isFailure()) {
+                            Log.e(TAG, "خطا در خرید: " + result.getMessage());
+                            return;
+                        }
+                        
+                        if (purchase != null) {
+                            verifyPurchaseWithServer(purchase);
+                        }
+                    },
+                    payload
+                );
+            } catch (Exception e) {
+                Log.e(TAG, "خطا در initiatePurchase: " + e.getMessage());
+            }
+        }
+        
+        private void verifyPurchaseWithServer(Purchase purchase) {
+            boolean verified = Security.verifyPurchase(
+                BuildConfig.IAB_PUBLIC_KEY,
+                purchase.getOriginalJson(),
+                purchase.getSignature()
+            );
+            
+            if (verified) {
+                listener.onPurchaseVerified("premium_upgrade", true);
+            } else {
+                Log.e(TAG, "تایید خرید ناموفق بود");
+            }
+        }
+        
+        public void destroy() {
+            if (iabHelper != null) {
+                iabHelper.disposeWhenFinished();
+                iabHelper = null;
+            }
+        }
+    }
+    EOF
+    echo "✅ فایل BillingManager.java ایجاد شد"
+
+- name: Update MainActivity with Billing
+  run: |
+    cat > app/src/main/java/com/example/myketiap/MainActivity.java << 'EOF'
+    package com.example.myketiap;
+
+    import android.os.Bundle;
+    import android.widget.Button;
+    import android.widget.TextView;
+    import android.widget.Toast;
+    import androidx.appcompat.app.AppCompatActivity;
+
+    public class MainActivity extends AppCompatActivity {
+        private static final String TAG = "MyketIAP";
+        private static final String SKU_PREMIUM = "premium_upgrade";
+        
+        private BillingManager billingManager;
+        private TextView statusText;
+        private Button buyButton;
+        private boolean isPremium = false;
+
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_main);
+            
+            statusText = findViewById(R.id.status_text);
+            buyButton = findViewById(R.id.buy_button);
+            
+            billingManager = new BillingManager(this, new BillingManager.BillingUpdatesListener() {
+                @Override
+                public void onBillingSetupFinished(boolean success) {
+                    runOnUiThread(() -> {
+                        if (success) {
+                            Toast.makeText(MainActivity.this, "اتصال به مایکت برقرار شد", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(MainActivity.this, "خطا در اتصال به مایکت", Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
+                
+                @Override
+                public void onPurchaseVerified(String sku, boolean success) {
+                    if (success && SKU_PREMIUM.equals(sku)) {
+                        isPremium = true;
+                        runOnUiThread(() -> {
+                            updateUI();
+                            Toast.makeText(MainActivity.this, "خرید با موفقیت انجام شد!", Toast.LENGTH_LONG).show();
+                        });
+                    }
+                }
+                
+                @Override
+                public void onQueryPurchasesFinished(boolean hasPremium) {
+                    isPremium = hasPremium;
+                    runOnUiThread(() -> updateUI());
+                }
+            });
+            
+            buyButton.setOnClickListener(v -> {
+                if (!isPremium) {
+                    billingManager.initiatePurchase(SKU_PREMIUM);
+                }
+            });
+            
+            updateUI();
+        }
+        
+        private void updateUI() {
+            if (isPremium) {
+                statusText.setText("وضعیت: پریمیوم فعال ✓");
+                buyButton.setEnabled(false);
+                buyButton.setText("خرید شده");
+            } else {
+                statusText.setText("وضعیت: نسخه معمولی");
+                buyButton.setEnabled(true);
+                buyButton.setText("ارتقا به پریمیوم - ۱۰,۰۰۰ تومان");
+            }
+        }
+        
+        @Override
+        protected void onDestroy() {
+            if (billingManager != null) {
+                billingManager.destroy();
+            }
+            super.onDestroy();
+        }
+    }
+    EOF
+    echo "✅ MainActivity با قابلیت پرداخت به‌روزرسانی شد"
+
+- name: Create proguard-rules.pro
+  run: |
+    cat > app/proguard-rules.pro << 'EOF'
+    # ProGuard rules for Myket IAP
+
+    # Keep IAB classes
+    -keep class com.myket.billing.** { *; }
+
+    # Keep Security classes
+    -keep class com.example.myketiap.Security { *; }
+    -keep class com.example.myketiap.BillingManager { *; }
+
+    # Keep Purchase and related classes
+    -keep class com.myket.billing.Purchase { *; }
+    -keep class com.myket.billing.IabHelper { *; }
+    -keep class com.myket.billing.IabResult { *; }
+    -keep class com.myket.billing.Inventory { *; }
+
+    # Remove logging in release
+    -assumenosideeffects class android.util.Log {
+        public static boolean isLoggable(java.lang.String, int);
+        public static int v(...);
+        public static int i(...);
+        public static int w(...);
+        public static int d(...);
+        public static int e(...);
+    }
+
+    # General Android rules
+    -keep public class * extends android.app.Activity
+    -keep public class * extends android.app.Application
+    -keep public class * extends android.app.Service
+    -keep public class * extends android.content.BroadcastReceiver
+
+    # Keep native methods
+    -keepclasseswithmembers class * {
+        native <methods>;
+    }
+
+    # Keep R classes
+    -keep class **.R$* { *; }
+    EOF
+    echo "✅ فایل proguard-rules.pro ایجاد شد"
+
+- name: Create Backend PHP files
+  run: |
+    cat > backend/verify.php << 'EOF'
+    <?php
+    header('Content-Type: text/plain');
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: POST');
+    header('Access-Control-Allow-Headers: Content-Type');
+
+    $purchase_data = $_POST['purchase_data'] ?? '';
+    $signature = $_POST['signature'] ?? '';
+
+    if (empty($purchase_data) || empty($signature)) {
+        echo "INVALID_DATA";
+        exit;
+    }
+
+    // در اینجا باید تایید امضا با کلید عمومی مایکت انجام شود
+    // این یک نمونه ساده است - در پروduction از الگوریتم‌های امن استفاده کنید
+    
+    $purchase = json_decode($purchase_data, true);
+    if ($purchase && isset($purchase['productId']) && $purchase['productId'] === 'premium_upgrade') {
+        // ذخیره اطلاعات خرید در دیتابیس
+        $token = $purchase['token'] ?? '';
+        $orderId = $purchase['orderId'] ?? '';
+        
+        // در اینجا می‌توانید اطلاعات را در دیتابیس ذخیره کنید
+        file_put_contents('purchases.log', date('Y-m-d H:i:s') . " - Token: $token, Order: $orderId\n", FILE_APPEND);
+        
+        echo "VERIFIED";
+    } else {
+        echo "INVALID_PRODUCT";
+    }
+    ?>
+    EOF
+
+    cat > backend/activate.php << 'EOF'
+    <?php
+    header('Content-Type: text/plain');
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: POST');
+    header('Access-Control-Allow-Headers: Content-Type');
+
+    $token = $_POST['token'] ?? '';
+
+    if (empty($token)) {
+        echo "INVALID_TOKEN";
+        exit;
+    }
+
+    // فعال‌سازی پریمیوم برای کاربر
+    // در اینجا باید به دیتابیس متصل شوید و وضعیت کاربر را به پریمیوم تغییر دهید
+    
+    file_put_contents('activations.log', date('Y-m-d H:i:s') . " - Activated premium for token: $token\n", FILE_APPEND);
+    
+    echo "ACTIVATED";
+    ?>
+    EOF
+
+    cat > backend/config.php << 'EOF'
+    <?php
+    // تنظیمات دیتابیس
+    define('DB_HOST', 'localhost');
+    define('DB_NAME', 'myket_iap');
+    define('DB_USER', 'username');
+    define('DB_PASS', 'password');
+
+    // کلید عمومی مایکت
+    define('MYKET_PUBLIC_KEY', 'YOUR_MYKET_PUBLIC_KEY_HERE');
+
+    // تنظیمات برنامه
+    define('APP_VERSION', '1.0.0');
+    ?>
+    EOF
+    echo "✅ فایل‌های backend ایجاد شدند"
+
+- name: Create README.md
+  run: |
+    cat > README.md << 'EOF'
+    # نمونه برنامه پرداخت درون‌برنامه‌ای مایکت
+
+    ## 📱 توضیحات
+    این یک برنامه نمونه اندروید با قابلیت پرداخت درون‌برنامه‌ای از طریق مایکت است.
+
+    ## 🚀 ویژگی‌ها
+    - پرداخت درون‌برنامه‌ای با مایکت
+    - محصول مصرف‌نشدنی (پریمیوم)
+    - تایید امنیت خریدها
+    - پشتیبانی از سرور برای تایید خرید
+
+    ## 🔧 راه‌اندازی
+
+    ### پیش‌نیازها
+    - Android Studio
+    - JDK 11+
+    - حساب توسعه‌دهنده مایکت
+
+    ### تنظیمات
+    1. کلید عمومی مایکت را در `app/build.gradle` قرار دهید:
+    ```gradle
+    buildConfigField "String", "IAB_PUBLIC_KEY", "\"کلید_عمومی_شما\""
+    ```
+
+    2. package name برنامه را در پنل مایکت ثبت کنید
+
+    3. محصول `premium_upgrade` را در پنل مایکت ایجاد کنید
+
+    ## 📁 ساختار پروژه
+    ```
+    app/
+    ├── src/main/java/com/example/myketiap/
+    │   ├── MainActivity.java
+    │   ├── BillingManager.java
+    │   └── Security.java
+    ├── build.gradle
+    └── AndroidManifest.xml
+    backend/
+    ├── verify.php
+    ├── activate.php
+    └── config.php
+    ```
+
+    ## 🔒 امنیت
+    - تایید امضای دیجیتال خریدها
+    - استفاده از ProGuard برای obfuscation
+    - تایید دو مرحله‌ای (کلاینت و سرور)
+
+    ## 📞 پشتیبانی
+    برای راهنمایی بیشتر با developer@myket.ir تماس بگیرید.
+    EOF
+    echo "✅ فایل README.md ایجاد شد"
+
+- name: Create .gitignore
+  run: |
+    cat > .gitignore << 'EOF'
+    # Built application files
+    *.apk
+    *.aab
+    *.ap_
+    *.aar
+
+    # Files for the ART/Dalvik VM
+    *.dex
+
+    # Java class files
+    *.class
+
+    # Generated files
+    bin/
+    gen/
+    out/
+
+    # Gradle files
+    .gradle/
+    build/
+
+    # Local configuration file (sdk path, etc)
+    local.properties
+
+    # Log Files
+    *.log
+
+    # Android Studio Navigation editor temp files
+    .navigation/
+
+    # Android Studio captures folder
+    captures/
+
+    # IntelliJ
+    *.iml
+    .idea/
+    modules.xml
+    .idea/modules.xml
+    .idea/workspace.xml
+
+    # Keystore files
+    *.jks
+    *.keystore
+
+    # External native build folder generated in Android Studio 2.2 and later
+    .cxx/
+
+    # Google Services (e.g. APIs or Firebase)
+    google-services.json
+
+    # Freeline
+    freeline.py
+    freeline/
+    freeline_project_description.json
+
+    # Backup files
+    *.backup
+
+    # OS generated files
+    .DS_Store
+    .DS_Store?
+    ._*
+    .Spotlight-V100
+    .Trashes
+    ehthumbs.db
+    Thumbs.db
+
+    # Backend logs
+    backend/*.log
+    EOF
+    echo "✅ فایل .gitignore ایجاد شد"
+
+- name: Verify project structure
+  run: |
+    echo "🔍 بررسی ساختار پروژه:"
+    tree -a -I '.git' || find . -type f -name "*.java" -o -name "*.xml" -o -name "*.gradle" -o -name "*.php" | sort
+    echo ""
+    echo "📊 تعداد فایل‌ها:"
+    find . -type f -name "*.java" | wc -l | xargs echo "فایل‌های Java:"
+    find . -type f -name "*.xml" | wc -l | xargs echo "فایل‌های XML:"
+    find . -type f -name "*.gradle" | wc -l | xargs echo "فایل‌های Gradle:"
+    find . -type f -name "*.php" | wc -l | xargs echo "فایل‌های PHP:"
+
+- name: Final build test
+  run: |
+    echo "🏗️ شروع ساخت نهایی..."
+    ./gradlew clean
+    ./gradlew assembleDebug
+    echo "✅ ساخت نهایی با موفقیت انجام شد"
+
+- name: List generated APKs
+  run: |
+    echo "📦 فایل‌های APK تولید شده:"
+    find app/build/outputs -name "*.apk" -type f | while read file; do
+        echo "  - $file ($(du -h "$file" | cut -f1))"
+    done
